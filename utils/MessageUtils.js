@@ -25,11 +25,11 @@ export function createTextMessage (text) {
     };
 }
 
-export function createImageMessage(image) {
+export function createImageMessage(uri) {
     return {
         type: 'image',
         id: getNextId(),
-        image, // Changed from 'image' to 'uri' to reflect the proper field
+        uri
     };
 }
   
