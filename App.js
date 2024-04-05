@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, BackHandler, Image, TouchableHighlight, Keyboard } from 'react-native';
+import * as Location from 'expo-location'; // Correct import statement for Location
 import MessageList from './components/MessageList';
 import { createTextMessage, createImageMessage, createLocationMessage } from './utils/MessageUtils';
 import Toolbar from "./components/Toolbar";
@@ -24,7 +25,7 @@ export default class App extends React.Component {
   }
 
   dismissFullScreenImage = () => {
-    this.setState({ fullscreenImageId: null});
+    this.setState({ fullscreenImageId: null });
   };
 
   handlePressMessage = ({ id, type }) => {
@@ -43,40 +44,7 @@ export default class App extends React.Component {
     }
   };
 
-  renderToolbar() {
-    const { isInputFocused } = this.state;
-    return (
-        <Toolbar
-        isFocused={isInputFocused}
-        onSubmit={this.handleSubmit}
-        onChangeFocus={this.handleChangeFocus}
-        onPressCamera={this.handlePressToolbarCamera}
-        onPressLocation={this.handlePressToolbarLocation}
-        />
-    );
-  }
-
-  renderFullscreenImage = () => {
-    const { messages, fullscreenImageId } = this.state;
-    if (!fullscreenImageId) return null;
-    const image = messages.find((message) => message.id === fullscreenImageId);
-    if (!image || image.type !== 'image') return null;
-  
-    const { uri } = image;
-  
-    return (
-      <View style={styles.fullscreenOverlay}>
-        <TouchableHighlight
-          style={styles.fullscreenOverlay}
-          onPress={this.dismissFullScreenImage}
-        >
-          <Image style={styles.fullscreenImage} source={{ uri }} />
-        </TouchableHighlight>
-      </View>
-    );
-  };
-  
-  UNSAFE_componentWillUpdate() {
+  UNSAFE_componentWillMount() {
     this.subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       const { fullscreenImageId } = this.state;
       if (fullscreenImageId) {
@@ -86,29 +54,84 @@ export default class App extends React.Component {
       return false;
     });
   }
+
   componentWillUnmount() {
-    // Check if this.subscription exists before trying to remove it
     if (this.subscription) {
       this.subscription.remove();
     }
   }
 
+  renderToolbar() {
+    const { isInputFocused } = this.state;
+    return (
+      <Toolbar
+        isFocused={isInputFocused}
+        onSubmit={this.handleSubmit}
+        onChangeFocus={this.handleChangeFocus}
+        onPressCamera={this.handlePressToolbarCamera}
+        onPressLocation={this.handlePressToolbarLocation}
+      />
+    );
+  }
+
+  renderFullscreenImage = () => {
+    const { messages, fullscreenImageId } = this.state;
+    if (!fullscreenImageId) return null;
+    const image = messages.find((message) => message.id === fullscreenImageId);
+    if (!image || image.type !== 'image') return null;
+  
+    const { uri } = image; // Make sure that `uri` is properly extracted from the image object
+  
+    return (
+      <View style={styles.fullscreenOverlay}>
+        <TouchableHighlight
+          style={styles.fullscreenOverlay}
+          onPress={this.dismissFullScreenImage}
+        >
+          <Image style={styles.fullscreenImage} source={{ uri: `uri` }} /> {/* Pass `uri` as string to source */}
+        </TouchableHighlight>
+      </View>
+    );
+  };
+  
+
   renderMessageList() {
     const { messages } = this.state;
     return (
       <View style={styles.messageContent}>
-        <MessageList messages={messages} 
+        <MessageList messages={messages}
           onPressMessage={this.handlePressMessage} />
       </View>
     );
   }
 
   handlePressToolbarCamera = () => {
-    // ...
+    // Handle camera press
   };
 
-  handlePressToolbarLocation = () => {
-    // ...
+  handlePressToolbarLocation = async () => {
+    try {
+     const { status } = await Location.requestForegroundPermissionsAsync(); // Request location permission
+      if (status !== 'granted') {
+        console.error('Location permission not granted');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({}); // Get current location
+      const { latitude, longitude } = location.coords;
+
+      this.setState({
+        messages: [
+          createLocationMessage({
+            latitude,
+            longitude,
+          }),
+          ...this.state.messages,
+        ],
+      });
+    } catch (error) {
+      console.error(error);
+    } 
   };
 
   handleChangeFocus = (isFocused) => {
@@ -125,9 +148,9 @@ export default class App extends React.Component {
   render() {
     return (
       <View style={styles.container}>
-          {this.renderMessageList()}
-          {this.renderToolbar()}
-          {this.renderFullscreenImage()}
+        {this.renderMessageList()}
+        {this.renderToolbar()}
+        {this.renderFullscreenImage()}
         <View style={styles.inputMethod}>
           <Text> Denzell Gil </Text>
         </View>
@@ -140,25 +163,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
-    //alignItems: 'center',
-    //justifyContent: 'center',
   },
   messageContent: {
     flex: 1,
     backgroundColor: 'white',
   },
   inputMethod: {
-    borderTopWidth: 1, 
+    borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.04)',
-    flex: 1, 
+    flex: 1,
     backgroundColor: '#4df0ff',
     padding: 15,
     borderRadius: 5,
     alignItems: 'center',
-    textAlign:'center'
+    textAlign: 'center'
   },
   toolbarSpace: {
-    borderTopWidth: 1, 
+    borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.04)',
     backgroundColor: '#72D4F3',
     padding: 15,
