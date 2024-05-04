@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, Text, BackHandler, Image, TouchableHighlight, Keyboard } from 'react-native';
-import * as Location from 'expo-location'; // Correct import statement for Location
-import MessageList from './components/MessageList';
+import { StyleSheet, View, Text, BackHandler, Image, TouchableHighlight, Keyboard, Button } from 'react-native';
+import * as Location from 'expo-location';
 import { createTextMessage, createImageMessage, createLocationMessage } from './utils/MessageUtils';
+import MessageList from './components/MessageList';
 import Toolbar from "./components/Toolbar";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 export default class App extends React.Component {
   constructor(props) {
@@ -14,8 +15,8 @@ export default class App extends React.Component {
         createTextMessage('World'),
         createTextMessage('Hello!'),
         createLocationMessage({
-          latitude: 14.6488,
-          longitude: 121.0509,
+          latitude: 14.626651,
+          longitude: 121.062378,
         }),
       ],
       fullscreenImageId: null,
@@ -80,7 +81,7 @@ export default class App extends React.Component {
     const image = messages.find((message) => message.id === fullscreenImageId);
     if (!image || image.type !== 'image') return null;
   
-    const { uri } = image; // Make sure that `uri` is properly extracted from the image object
+    const { uri } = image;
   
     return (
       <View style={styles.fullscreenOverlay}>
@@ -88,7 +89,7 @@ export default class App extends React.Component {
           style={styles.fullscreenOverlay}
           onPress={this.dismissFullScreenImage}
         >
-          <Image style={styles.fullscreenImage} source={{ uri: `uri` }} /> {/* Pass `uri` as string to source */}
+          <Image style={styles.fullscreenImage} source={{ uri: uri }} />
         </TouchableHighlight>
       </View>
     );
@@ -111,24 +112,23 @@ export default class App extends React.Component {
 
   handlePressToolbarLocation = async () => {
     try {
-     const { status } = await Location.requestForegroundPermissionsAsync(); // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.error('Location permission not granted');
         return;
       }
-
-      const location = await Location.getCurrentPositionAsync({}); // Get current location
+  
+      const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-
-      this.setState({
-        messages: [
-          createLocationMessage({
-            latitude,
-            longitude,
-          }),
-          ...this.state.messages,
-        ],
+  
+      const newMessage = createLocationMessage({
+        latitude,
+        longitude,
       });
+  
+      this.setState(prevState => ({
+        messages: [newMessage, ...prevState.messages],
+      }));
     } catch (error) {
       console.error(error);
     } 
@@ -153,11 +153,37 @@ export default class App extends React.Component {
         {this.renderFullscreenImage()}
         <View style={styles.inputMethod}>
           <Text> Denzell Gil </Text>
+          <AnimatedViewWithButton />
         </View>
       </View>
     );
   }
 }
+
+const AnimatedViewWithButton = () => {
+  const width = useSharedValue(100);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      width: width.value,
+      height: 100,
+      backgroundColor: 'violet',
+    };
+  });
+
+  const handlePress = () => {
+    width.value = withSpring(width.value + 50);
+  };
+
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent:'center' }}>
+      <Animated.View
+        style={animatedStyle}
+      />
+      <Button onPress={handlePress} title="Click me" />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
